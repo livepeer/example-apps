@@ -1,0 +1,26 @@
+# End-to-end offchain demo: orchestrator + hello-world app.
+#
+# The orchestrator service is defined once in ../compose.orchestrator.yml and
+# pulled in with `extends`; this file only adds the app. Once up, call it from
+# the host with the SDK:
+#   docker compose up -d --build
+#   uv run client.py --name livepeer --discovery https://localhost:8935/discovery
+
+services:
+  orchestrator:
+    extends:
+      file: ../compose.orchestrator.yml
+      service: orchestrator
+
+  app:
+    build: .
+    container_name: example_apps_hello_world
+    depends_on:
+      - orchestrator
+    command:
+      - python
+      - runner.py
+      - --host=0.0.0.0
+      - --orchestrator=https://orchestrator:8935
+      - --orchSecret=abcdef
+      - --runner-url=http://app:5000

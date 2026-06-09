@@ -1,0 +1,14 @@
+# Vim swap files
+*.swp
+*.swo
+*.swn
+
+# Python
+__pycache__/
+*.pyc
+.venv
+uv.lock
+
+# Local environment / secrets
+.env
+.DS_Store

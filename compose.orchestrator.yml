@@ -1,0 +1,34 @@
+# Shared offchain orchestrator service.
+#
+# Not run on its own. Each example's docker-compose.yml pulls this in with
+# `extends` so the orchestrator is defined once for the whole repo:
+#
+#   services:
+#     orchestrator:
+#       extends:
+#         file: ../compose.orchestrator.yml
+#         service: orchestrator
+#
+# The go-livepeer image entrypoint is `livepeer`, so `command:` is flags only.
+
+services:
+  orchestrator:
+    image: livepeer/go-livepeer:ja-live-runner
+    container_name: example_apps_orchestrator
+    # Two distinct addresses:
+    #   serviceAddr    advertised to external clients in discovery responses,
+    #                  so it must be reachable from the host (published port).
+    #   liveRunnerAddr control-plane URL runners use for heartbeat + trickle,
+    #                  so it must resolve on the compose network.
+    command:
+      - -orchestrator
+      - -useLiveRunners
+      - -serviceAddr=127.0.0.1:8935
+      - -httpAddr=0.0.0.0:8935
+      - -liveRunnerAddr=https://orchestrator:8935
+      - -orchSecret=abcdef
+      - -network=offchain
+      - -monitor=false
+      - -v=6
+    ports:
+      - "8935:8935"
