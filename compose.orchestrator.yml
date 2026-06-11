@@ -33,11 +33,14 @@ services:
     ports:
       - "8935:8935"
     # Lets dependents wait for readiness via `depends_on: condition: service_healthy`.
-    # The image has no curl, so probe the port with bash; the orchestrator binds
-    # 8935 only once it's ready, so port-open is a reliable readiness signal.
+    # 8935 is HTTPS, and the image has no curl/wget — only openssl. A raw-TCP probe
+    # (bash /dev/tcp) opens the socket without a TLS handshake, which the server logs
+    # as "TLS handshake error: unexpected EOF" every interval. So speak real TLS with
+    # openssl and GET /healthz; matching "200 OK" also confirms the orchestrator is
+    # actually serving, not just listening.
     healthcheck:
-      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8935"]
+      test: printf 'GET /healthz HTTP/1.0\r\n\r\n' | openssl s_client -connect 127.0.0.1:8935 -quiet 2>/dev/null | grep -q '200 OK'
       interval: 3s
-      timeout: 2s
+      timeout: 3s
       retries: 40
       start_period: 5s
