@@ -32,3 +32,12 @@ services:
       - -v=6
     ports:
       - "8935:8935"
+    # Lets dependents wait for readiness via `depends_on: condition: service_healthy`.
+    # The image has no curl, so probe the port with bash; the orchestrator binds
+    # 8935 only once it's ready, so port-open is a reliable readiness signal.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8935"]
+      interval: 3s
+      timeout: 2s
+      retries: 40
+      start_period: 5s

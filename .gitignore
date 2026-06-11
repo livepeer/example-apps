@@ -12,3 +12,7 @@ uv.lock
 # Local environment / secrets
 .env
 .DS_Store
+
+# IDE
+.vscode
+*.code-workspace

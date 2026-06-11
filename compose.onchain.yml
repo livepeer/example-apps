@@ -1,0 +1,59 @@
+# Shared on-chain payment services: remote signer + on-chain orchestrator.
+# Pulled into each example's docker-compose.onchain.yml via `extends` and
+# layered on the offchain base:
+#   docker compose -f docker-compose.yml -f docker-compose.onchain.yml up
+#
+# signer: standalone `-remoteSigner` holding the funded payer wallet, mints
+#   tickets (cannot run offchain). The SDK client pays via --signer.
+# orchestrator: the base orchestrator re-pointed on-chain.
+#
+# Keystores are host dirs (outside the repo) mounted read-only; addresses and
+# passwords come from the example's .env. See hello-world/.env.example.
+# Image entrypoint is `livepeer`, so `command:` is flags only.
+
+services:
+  signer:
+    image: livepeer/go-livepeer:ja-live-runner
+    container_name: example_apps_signer
+    command:
+      - -remoteSigner
+      - -network=${NETWORK}
+      - -ethUrl=${ETH_RPC_URL}
+      - -ethKeystorePath=/keystore
+      - -ethAcctAddr=${SIGNER_ETH_ACCT}
+      - -ethPassword=${SIGNER_ETH_PASSWORD}
+      - -httpAddr=0.0.0.0:7936
+      - -maxPricePerUnit=${MAX_PRICE_PER_UNIT}
+      - -pixelsPerUnit=${PIXELS_PER_UNIT}
+      # Cap per-win payout so redemptions stay cheap and frequent
+      - -maxFaceValue=10000000000000
+      - -v=6
+    volumes:
+      - ${SIGNER_KEYSTORE_DIR}:/keystore:ro
+
+  # Re-point the base orchestrator on-chain. image/ports/container_name are
+  # inherited from compose.orchestrator.yml via the base file's `extends`.
+  orchestrator:
+    command:
+      - -orchestrator
+      - -useLiveRunners
+      - -serviceAddr=127.0.0.1:8935
+      - -httpAddr=0.0.0.0:8935
+      - -liveRunnerAddr=https://orchestrator:8935
+      - -orchSecret=abcdef
+      - -network=${NETWORK}
+      - -ethUrl=${ETH_RPC_URL}
+      - -ethKeystorePath=/keystore
+      - -ethAcctAddr=${ORCH_ETH_ACCT}
+      - -ethPassword=${ORCH_ETH_PASSWORD}
+      - -ethOrchAddr=${ORCH_ONCHAIN_ADDR}
+      # Price comes from the app's registration; -pricePerUnit only sets the
+      # unused legacy base price, but an on-chain O won't boot without it.
+      - -pricePerUnit=0
+      # EV per ticket (not the price). The default (8e9) is too small here and
+      # trips the 100-tickets-per-payment cap; raise it to keep ~10 tickets.
+      - -ticketEV=1000000000000
+      - -monitor=false
+      - -v=6
+    volumes:
+      - ${ORCH_KEYSTORE_DIR}:/keystore:ro

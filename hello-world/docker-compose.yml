@@ -15,8 +15,10 @@ services:
   app:
     build: .
     container_name: example_apps_hello_world
+    # Wait for the orchestrator's healthcheck so registration doesn't race its boot.
     depends_on:
-      - orchestrator
+      orchestrator:
+        condition: service_healthy
     command:
       - python
       - runner.py
