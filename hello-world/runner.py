@@ -7,7 +7,7 @@ from contextlib import suppress
 
 from aiohttp import web
 
-from livepeer_gateway.live_runner import LiveRunnerRegistration, register_runner
+from livepeer_gateway.live_runner import register_runner
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5000
@@ -33,40 +33,36 @@ async def _handle_hello(request: web.Request) -> web.Response:
     return web.json_response({"message": f"Hello, {name}!"})
 
 
-async def _on_startup(app: web.Application) -> None:
-    args = _parse_args()
-    registration = await register_runner(
-        args.orchestrator,
-        secret=args.orchSecret,
-        runner_url=args.runner_url,
-        app=APP_ID,
-        price_per_unit=args.price,
-        pixels_per_unit=args.pixels_per_unit,
-    )
-    app["registration"] = registration
-    log.info(
-        "registered runner_id=%s orchestrator=%s",
-        registration.runner_id,
-        registration.orchestrator_url,
-    )
-
-
-async def _on_cleanup(app: web.Application) -> None:
-    registration = app.get("registration")
-    if isinstance(registration, LiveRunnerRegistration):
-        with suppress(Exception):
-            await registration.close()
-
-
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    args = _parse_args()
+
+    async def _on_startup(app: web.Application) -> None:
+        app["registration"] = await register_runner(
+            args.orchestrator,
+            secret=args.orchSecret,
+            runner_url=args.runner_url,
+            app=APP_ID,
+            price_per_unit=args.price,
+            pixels_per_unit=args.pixels_per_unit,
+        )
+        log.info(
+            "registered runner_id=%s orchestrator=%s",
+            app["registration"].runner_id,
+            app["registration"].orchestrator_url,
+        )
+
+    async def _on_cleanup(app: web.Application) -> None:
+        with suppress(Exception):
+            await app["registration"].close()
+
     app = web.Application()
     app.router.add_post("/hello", _handle_hello)
     app.on_startup.append(_on_startup)
     app.on_cleanup.append(_on_cleanup)
     # print=None suppresses aiohttp's stdout banner (which would block-buffer);
     # everything goes through logging, which flushes per record.
-    web.run_app(app, host=_parse_args().host, port=DEFAULT_PORT, print=None)
+    web.run_app(app, host=args.host, port=DEFAULT_PORT, print=None)
 
 
 if __name__ == "__main__":

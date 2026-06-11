@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import sys
+import logging
 from contextlib import suppress
 
 from livepeer_gateway.errors import LivepeerGatewayError
@@ -13,9 +13,7 @@ from livepeer_gateway.selection import reserve_session
 DEFAULT_DISCOVERY = "http://localhost:8935/discovery"
 APP_ID = "livepeer-sample/hello-world"
 
-
-def _log(*args: object) -> None:
-    print(*args, file=sys.stderr)
+log = logging.getLogger("hello-world-client")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -27,6 +25,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 async def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = _parse_args()
     signer_url = args.signer.strip() or None
     session = None
@@ -36,8 +35,7 @@ async def main() -> None:
             app=APP_ID,
             signer_url=signer_url,
         )
-        _log("session_id:", session.session_id)
-        _log("app_url:", session.app_url)
+        log.info("session_id=%s app_url=%s", session.session_id, session.app_url)
 
         result = await call_runner(
             runner_url=session.app_url.rstrip("/") + "/hello",
